@@ -1,0 +1,104 @@
+<project basedir="." name="Project" default="run.test" xmlns:ivy="antlib:org.apache.ivy.ant">
+	
+	<presetdef name="javac">
+	    <javac includeantruntime="false" />
+	</presetdef>
+	
+	<property name="sitebase" value="." /> 
+	<property name="build" location="${sitebase}/Project/build"/>
+	<property name="test-classes" value="${build}/test-classes" />
+	<property name="test-output" value="${build}/test-output" />
+	<property name="lib" location="lib" />
+	<property name="src" location="${sitebase}/src" />
+	<property name="aspectj.version" value="1.9.1"/>
+	
+	<!-- Ivy properties -->
+    <property name="ivy.install.version" value="2.3.0" />
+    <property name="ivy.jar.dir" value="${basedir}/lib" />
+    <property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
+    <property name="ivy.lib.dir" value="${basedir}/dependents" />
+	
+	<path id="lib.path.id">
+    	<fileset dir="${ivy.lib.dir}" /> <!-- ./dependents -->
+    </path>
+	
+	<path id="build.classpath">
+		<fileset dir="${lib}">
+			<include name="selenium-server-standalone-3.141.59.jar" />
+			<include name="testng-6.13.1.jar" />
+			<include name="allure-java-annotations-1.5.4.jar"/>
+			<include name="allure-java-commons-2.6.0.jar"/>
+			<include name="javax-crypto.jar"/>
+			<include name="commons-codec-1.12.jar"/>
+			<include name="commons-io-2.6.jar"/>
+		</fileset>
+	</path>
+	
+	 <target name="install-ivy" depends="download-ivy" description="Install ivy">
+        <path id="ivy.lib.path"> 
+            <fileset dir="${ivy.jar.dir}" includes="*.jar"/> <!-- ./lib -->
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    </target>
+
+    <target name="download-ivy" unless="skip.download" description="Download Ivy">
+        <get src="http://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar" dest="${ivy.jar.file}" usetimestamp="true"/>
+    </target>
+
+    <target name="update" depends="install-ivy" description="Download project dependencies">
+    	<ivy:retrieve/>
+    </target>
+	
+	<target name="init" description="Creating the build folders">
+		<mkdir dir="${build}" />
+		<mkdir dir="${test-classes}" />
+		<mkdir dir="${test-output}" />
+		<mkdir dir="${sitebase}/target" />
+		<mkdir dir="${sitebase}/target/allure-results" />
+	</target>
+	
+	<target name="clean" description="Deleting existing build file">
+		<delete dir="${build}" failonerror="false" />
+		<delete dir="${sitebase}/target" failonerror="false" />
+	</target>
+
+	<target name="compile" depends="clean,init,update" description="Compile src folder">
+		<javac destdir="${test-classes}" classpathref="build.classpath"
+			debug="false" target="1.8" encoding="iso-8859-1">
+			<src path="${src}" />
+		</javac>
+	</target>
+
+	<target name="selenium.trigger" depends="compile" description="Running TestNGUtils.main() and creating run.xml. Trigger run.xml with TestNG">   
+		<taskdef name="testng" classname="org.testng.TestNGAntTask">
+			<classpath>
+				<pathelement location="${lib}/testng-6.13.1.jar" />
+			</classpath>
+		</taskdef>
+		<!-- Run TestNGUtils.main() to create run.xml which holds all the test suite details -->
+		<java classname="com.client.project.utils.TestNGUtils" classpathref="build.classpath" classpath="${test-classes}">
+            <sysproperty key="java.util.logging.config.file" value="logging.properties"/>
+	    </java>	
+		
+		<!-- Triggering run.xml using TestNG -->
+		<testng outputdir="${test-output}" useDefaultListeners="true">   
+            <jvmarg value="-javaagent:${ivy.lib.dir}/aspectjweaver-${aspectj.version}.jar"/>
+            <classpath>
+                <pathelement location="${test-classes}"/>
+                <path refid="lib.path.id"/>
+            	<path refid="build.classpath"/>
+            </classpath>
+			<xmlfileset dir="${test-output}" includes="run.xml" />
+        </testng>
+		<!-- Copying the Allure report directory to ./Project/build/test-output/target -->
+		<mkdir dir="${test-output}/target" />
+		<copy todir="${test-output}/target" >  
+		    <fileset dir="${sitebase}/target" includes="**"/>  
+		</copy>
+		<!-- <delete dir="${sitebase}/target" failonerror="false" /> -->
+	</target>
+		
+	<target name="run.test" depends="compile,selenium.trigger">
+	</target>
+	
+</project>
