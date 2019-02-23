@@ -79,7 +79,7 @@ public class JenkinsAndAllureUtils {
 		//Author		: Sreekanth
 		//Date			: 12-06-2018
 		//Description	: To create the Dynamic Allure report URL 
-		String allureReportUrl="https://fullComputerName:1337/jenkinsJobName/builds/buildNumber/archive/projectName/Project/build/allure-report/index.html";
+		String allureReportUrl="http://fullComputerName:1337/jenkinsJobName/builds/buildNumber/archive/projectName/Project/build/allure-report/index.html";
 		String buildNumber=getJenkinsBuildNumber();
 		String fullComputerName=getFullComputerName();
 		String projectName=getProjectName();
